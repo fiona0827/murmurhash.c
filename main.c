@@ -8,9 +8,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef UNIX
 #include <unistd.h>
 #include <inttypes.h>
+#endif
+#ifdef WIN32
+#include <io.h> // for _isatty()
+#endif
 #include "murmurhash.h"
+
+#ifdef WIN32
+#define PRIu32 "u"
+#endif
 
 static void
 usage () {
@@ -26,10 +35,14 @@ help () {
 
 static char *
 read_stdin () {
-  size_t bsize = 1024;
+  #ifdef WIN32
+  #define BSIZE 1024
+  #else
+  const size_t BSIZE = 1024;
+  #endif
   size_t size = 1;
-  char buf[bsize];
-  char *res = (char *) malloc(sizeof(char) * bsize);
+  char buf[BSIZE];
+  char *res = (char *) malloc(sizeof(char) * BSIZE);
   char *tmp = NULL;
 
   // memory issue
@@ -39,7 +52,7 @@ read_stdin () {
   res[0] = '\0';
 
   // read
-  if (NULL != fgets(buf, bsize, stdin)) {
+  if (NULL != fgets(buf, BSIZE, stdin)) {
     // store
     tmp = res;
     // resize
@@ -54,7 +67,11 @@ read_stdin () {
     }
 
     // yield
+#ifdef WIN32
+    strcat_s(res, size, buf);
+#else
     strcat(res, buf);
+#endif
 
     return res;
   }
@@ -66,12 +83,13 @@ read_stdin () {
 
 #define isopt(opt, str) (0 == strncmp(opt, str, strlen(str)))
 
-#define setopt(opt, key, var) {                       \
-    char tmp = 0;                                     \
-    size_t len = strlen(key) + 1;                     \
-    for (int i = 0; i < len; ++i) { tmp = *opt++; }   \
-    var = opt;                                        \
-}
+#define setopt(opt, key, var) do {                  \
+    size_t i;                                       \
+    char tmp = 0;                                   \
+    size_t len = strlen(key) + 1;                   \
+    for (i = 0; i < len; ++i) { tmp = *opt++; }     \
+    var = opt;                                      \
+  } while (0);
 
 int
 main (int argc, char **argv) {
@@ -122,7 +140,7 @@ main (int argc, char **argv) {
 
 #define hash(key) murmurhash(key, (uint32_t) strlen(key), (uint32_t) atoi(seed));
 
-  if (1 == isatty(0)) { return 1; }
+  if (1 == _isatty(0)) { return 1; }
   else if (ferror(stdin)) { return 1; }
   else {
     buf = read_stdin();

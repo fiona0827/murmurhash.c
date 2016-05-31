@@ -8,9 +8,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef UNIX
 #include <inttypes.h>
+#endif
 #include <assert.h>
 #include "murmurhash.h"
+
+#ifdef WIN32
+#define PRIu32 "u"
+#endif
 
 int
 main (void) {
